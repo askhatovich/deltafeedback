@@ -1,0 +1,14 @@
+build/
+build-*/
+dist/
+deltachat-core-rust/
+*.db
+*.db-wal
+*.db-shm
+*.db.dc
+*.db.dc-wal
+*.db.dc-shm
+*.db.dc-blobs/
+config.ini
+.cache/
+compile_commands.json

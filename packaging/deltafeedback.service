@@ -1,0 +1,22 @@
+[Unit]
+Description=DeltaFeedback contact form server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deltafeedback
+Group=deltafeedback
+WorkingDirectory=/var/lib/deltafeedback
+ExecStart=/usr/bin/deltafeedback --run /etc/deltafeedback/config.ini
+Restart=on-failure
+RestartSec=3
+# Hardening — the bot only needs to read /etc and write /var/lib.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/deltafeedback
+
+[Install]
+WantedBy=multi-user.target

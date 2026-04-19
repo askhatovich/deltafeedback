@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n="title">Обратная связь</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <h1 data-i18n="title">Обратная связь</h1>
+
+        <section id="welcome" class="welcome" hidden></section>
+
+        <form id="form" hidden novalidate>
+            <label class="field">
+                <span class="label" data-i18n="form.name">Как к вам обращаться?</span>
+                <input name="name" maxlength="40" autocomplete="name">
+            </label>
+
+            <label class="field">
+                <span class="label" data-i18n="form.message">Сообщение</span>
+                <textarea name="message" rows="6" maxlength="500" required autocomplete="off"></textarea>
+                <span class="counter"><span class="used">0</span>/500</span>
+            </label>
+
+            <!-- honeypot: visually offset, NOT display:none -->
+            <label class="hp" aria-hidden="true">
+                <span>Website</span>
+                <input name="website" tabindex="-1" autocomplete="off">
+            </label>
+
+            <div class="actions">
+                <button type="submit" class="btn primary" data-i18n="form.send">Отправить</button>
+                <p class="status"></p>
+            </div>
+        </form>
+
+        <section id="ticket" class="card" hidden>
+            <header class="ticket-head">
+                <span data-i18n="ticket.id_label">ID:</span>
+                <code class="ticket-id"></code>
+                <span class="ticket-status badge"></span>
+            </header>
+
+            <ul class="messages"></ul>
+
+            <form id="reply-form" hidden>
+                <label class="field">
+                    <span class="label" data-i18n="reply.label">Ваш ответ</span>
+                    <textarea name="body" rows="3" maxlength="500" required></textarea>
+                    <span class="counter"><span class="reply-used">0</span>/500</span>
+                </label>
+                <button type="submit" class="btn primary" data-i18n="reply.send">Ответить</button>
+            </form>
+
+            <button class="btn ghost new-ticket" hidden data-i18n="ticket.new">Новое обращение</button>
+        </section>
+    </main>
+
+    <footer>
+        <nav class="lang-switch" aria-label="Language">
+            <button type="button" class="lang-btn" data-set-lang="ru">Русский</button>
+            <span class="lang-sep">·</span>
+            <button type="button" class="lang-btn" data-set-lang="en">English</button>
+        </nav>
+        <p class="legal">
+            <a href="https://github.com/askhatovich/deltafeedback"
+               target="_blank" rel="noopener noreferrer">DeltaFeedback</a>
+            <span class="sep">&copy;</span>
+            <span>GPLv3</span>
+        </p>
+    </footer>
+
+    <script src="/static/sha256.js"></script>
+    <script src="/static/i18n.js" defer></script>
+    <script src="/static/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+#!/bin/sh
+set -e
+
+PKG=deltafeedback
+ETC=/etc/$PKG
+RUN=/var/lib/$PKG
+
+# Dedicated unprivileged user.
+if ! getent group $PKG >/dev/null; then
+    addgroup --system $PKG
+fi
+if ! getent passwd $PKG >/dev/null; then
+    adduser --system --ingroup $PKG --home $RUN \
+        --no-create-home --gecos 'DeltaFeedback' --shell /usr/sbin/nologin $PKG
+fi
+
+# State directory (SQLite db, DC db, blobs).
+install -d -o $PKG -g $PKG -m 0750 $RUN
+
+# Initialise config.ini from the example ONLY if it does not yet exist —
+# upgrades MUST NOT overwrite a user's edited config.
+if [ ! -e $ETC/config.ini ]; then
+    install -m 0640 -o root -g $PKG $ETC/config.example.ini $ETC/config.ini
+    # Make sure the bundled defaults point inside our state dir.
+    sed -i \
+        -e "s|^db=.*|db=$RUN/deltafeedback.db|" \
+        -e "s|^web_root=.*|web_root=/usr/share/$PKG/web|" \
+        $ETC/config.ini
+    echo "$PKG: created $ETC/config.ini from example. Run:"
+    echo "    sudo -u $PKG $PKG --register <chatmail-domain> $ETC/config.ini"
+    echo "  then enable the service:"
+    echo "    sudo systemctl enable --now $PKG.service"
+fi
+
+# Always ensure the example file is readable for diff'ing on upgrade.
+chmod 0644 $ETC/config.example.ini || true
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+
+#DEBHELPER#
+exit 0

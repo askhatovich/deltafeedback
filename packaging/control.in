@@ -1,0 +1,16 @@
+Package: deltafeedback
+Version: @VERSION@
+Section: web
+Priority: optional
+Architecture: @ARCH@
+Installed-Size: @INSTALLED_SIZE@
+Maintainer: Roman <167345407+askhatovich@users.noreply.github.com>
+Depends: libc6, libsqlite3-0, libssl3, adduser
+Homepage: https://github.com/askhatovich/deltafeedback
+Description: Self-hosted contact form with a Delta Chat bot backend.
+ Visitors send messages via a tiny HTML form; messages are delivered to
+ the operator over Delta Chat. Replies routed back through DC quote/reply
+ appear on the visitor's ticket page.
+ .
+ POW captcha + honeypot + form fill-time check protect against trivial
+ spam. Tickets are auto-purged after 7 days of inactivity.

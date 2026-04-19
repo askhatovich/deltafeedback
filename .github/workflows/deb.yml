@@ -1,0 +1,84 @@
+name: Build .deb
+
+on:
+  push:
+    branches: [main]
+    tags:     ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Debian ${{ matrix.debian }} (${{ matrix.codename }})
+    runs-on: ubuntu-latest
+    container: debian:${{ matrix.debian }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - debian: '12'
+            codename: bookworm
+          - debian: '13'
+            codename: trixie
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential cmake git ca-certificates curl pkg-config \
+            libsqlite3-dev libssl-dev libasio-dev \
+            rustc cargo \
+            dpkg-dev patchelf file
+
+      - uses: actions/checkout@v4
+
+      - name: Cache deltachat-core build
+        id: cache-dc
+        uses: actions/cache@v4
+        with:
+          path: deltachat-core-rust/target/release
+          key: dc-core-${{ matrix.debian }}-${{ hashFiles('.github/workflows/deb.yml') }}
+
+      - name: Build libdeltachat (cdylib)
+        if: steps.cache-dc.outputs.cache-hit != 'true'
+        run: |
+          # Pin a known-good upstream commit; bump together with the bot project.
+          git clone --depth=1 --branch v1.158.4 https://github.com/chatmail/core.git deltachat-core-rust
+          cd deltachat-core-rust
+          cargo build --release -p deltachat_ffi --no-default-features --features=jsonrpc
+
+      - name: Configure & build
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDC_CORE="$PWD/deltachat-core-rust" \
+            -DDELTAFEEDBACK_BUILD_TESTS=OFF
+          cmake --build build -j"$(nproc)"
+
+      - name: Build .deb
+        env:
+          DC_LIB: ${{ github.workspace }}/deltachat-core-rust/target/release/libdeltachat.so
+          DEBIAN_CODENAME: ${{ matrix.codename }}
+        run: ./packaging/build-deb.sh
+
+      - name: Lint package
+        run: |
+          for d in dist/*.deb; do
+            echo "=== $d ==="
+            dpkg-deb --info "$d"
+            dpkg-deb --contents "$d" | head -40
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deltafeedback-${{ matrix.codename }}
+          path: dist/*.deb
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb

@@ -1,0 +1,36 @@
+{
+  "title": "Contact",
+  "form": {
+    "name": "How should I address you?",
+    "message": "Message",
+    "send": "Send"
+  },
+  "reply": {
+    "label": "Your reply",
+    "send": "Reply"
+  },
+  "ticket": {
+    "id_label": "ID:",
+    "new": "New ticket",
+    "awaiting_admin": "Awaiting reply",
+    "awaiting_visitor": "Your turn",
+    "closed": "Closed"
+  },
+  "errors": {
+    "no_owner": "Nobody is accepting messages right now. Please try later.",
+    "pow_failed": "Verification failed. Reload the page and try again.",
+    "too_fast": "Too fast. Please fill the form again.",
+    "honeypot": "Verification failed.",
+    "bad_field": "Please check the form fields.",
+    "rate_limited": "Too many requests. Slow down a bit.",
+    "ticket_closed": "This ticket is closed.",
+    "not_found": "Ticket not found or deleted.",
+    "bad_token": "Access denied.",
+    "not_your_turn": "Wait for admin's reply.",
+    "send_failed": "Could not deliver the message. Please try later.",
+    "missing_auth": "Authentication required.",
+    "bad_json": "Bad request.",
+    "network": "Network error.",
+    "computing": "Computing proof of work…"
+  }
+}

@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+PKG=deltafeedback
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+
+# `purge` only — remove user, state, config remnants. `remove` keeps them.
+if [ "$1" = "purge" ]; then
+    rm -rf /var/lib/$PKG /etc/$PKG
+    if getent passwd $PKG >/dev/null; then deluser --system $PKG || true; fi
+    if getent group  $PKG >/dev/null; then delgroup --system $PKG || true; fi
+fi
+
+#DEBHELPER#
+exit 0
