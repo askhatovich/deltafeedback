@@ -28,8 +28,13 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential cmake git ca-certificates curl pkg-config \
             libsqlite3-dev libssl-dev libasio-dev \
-            rustc cargo \
             dpkg-dev patchelf file
+
+      - name: Install Rust via rustup (apt-shipped cargo is too old for edition 2024)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v4
 
