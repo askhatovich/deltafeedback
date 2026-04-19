@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Default GITHUB_TOKEN is read-only for newly-created repos; the release-on-tag
+# step needs contents:write to upload .deb assets.
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Debian ${{ matrix.debian }} (${{ matrix.codename }})
