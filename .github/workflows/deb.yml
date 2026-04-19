@@ -38,12 +38,17 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Cache deltachat-core build
+      - name: Cache libdeltachat artifact
         id: cache-dc
         uses: actions/cache@v4
         with:
-          path: deltachat-core-rust/target/release
-          key: dc-core-${{ matrix.debian }}-${{ hashFiles('.github/workflows/deb.yml') }}
+          # Cache ONLY the compiled .so + the matching FFI header — the full
+          # target/release dir is ~440 MB of intermediate artifacts we don't
+          # need at install time. The header path is deterministic per tag.
+          path: |
+            dc-cache/libdeltachat.so
+            dc-cache/deltachat.h
+          key: dc-core-v2.49.0-${{ matrix.debian }}-${{ hashFiles('.github/workflows/deb.yml') }}
 
       - name: Build libdeltachat (cdylib)
         if: steps.cache-dc.outputs.cache-hit != 'true'
@@ -51,8 +56,19 @@ jobs:
           # Pin to a tagged release of chatmail/core. Bump deliberately; the
           # FFI is mostly stable across minor versions but check release notes.
           git clone --depth=1 --branch v2.49.0 https://github.com/chatmail/core.git deltachat-core-rust
-          cd deltachat-core-rust
-          cargo build --release -p deltachat_ffi
+          (cd deltachat-core-rust && cargo build --release -p deltachat_ffi)
+          mkdir -p dc-cache
+          cp deltachat-core-rust/target/release/libdeltachat.so dc-cache/
+          cp deltachat-core-rust/deltachat-ffi/deltachat.h      dc-cache/
+
+      - name: Restore deltachat-core layout for CMake
+        run: |
+          # CMakeLists expects ../deltachatbot-cpp/deltachat-core-rust/{target/release,deltachat-ffi}
+          # but we override DC_CORE → here we just need a folder that contains
+          # both subdirs. Reconstruct minimal layout from the cached files.
+          mkdir -p deltachat-core-rust/target/release deltachat-core-rust/deltachat-ffi
+          cp dc-cache/libdeltachat.so deltachat-core-rust/target/release/
+          cp dc-cache/deltachat.h     deltachat-core-rust/deltachat-ffi/
 
       - name: Configure & build
         run: |
