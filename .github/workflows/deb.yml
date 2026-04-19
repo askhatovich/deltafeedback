@@ -43,10 +43,11 @@ jobs:
       - name: Build libdeltachat (cdylib)
         if: steps.cache-dc.outputs.cache-hit != 'true'
         run: |
-          # Pin a known-good upstream commit; bump together with the bot project.
-          git clone --depth=1 --branch v1.158.4 https://github.com/chatmail/core.git deltachat-core-rust
+          # Pin to a tagged release of chatmail/core. Bump deliberately; the
+          # FFI is mostly stable across minor versions but check release notes.
+          git clone --depth=1 --branch v2.49.0 https://github.com/chatmail/core.git deltachat-core-rust
           cd deltachat-core-rust
-          cargo build --release -p deltachat_ffi --no-default-features --features=jsonrpc
+          cargo build --release -p deltachat_ffi
 
       - name: Configure & build
         run: |
