@@ -12,6 +12,12 @@ on:
 permissions:
   contents: write
 
+# Pinned upstream chatmail/core tag — used in BOTH the git clone branch and
+# the cache key. Bumping this string is the only place to change when
+# upgrading libdeltachat (also test FFI compatibility).
+env:
+  DC_CORE_TAG: v2.49.0
+
 jobs:
   build:
     name: Debian ${{ matrix.debian }} (${{ matrix.codename }})
@@ -49,18 +55,17 @@ jobs:
         with:
           # Cache ONLY the compiled .so + the matching FFI header — the full
           # target/release dir is ~440 MB of intermediate artifacts we don't
-          # need at install time. The header path is deterministic per tag.
+          # need at install time. Key depends only on the upstream tag and
+          # debian codename, so unrelated workflow edits don't bust the cache.
           path: |
             dc-cache/libdeltachat.so
             dc-cache/deltachat.h
-          key: dc-core-v2.49.0-${{ matrix.debian }}-${{ hashFiles('.github/workflows/deb.yml') }}
+          key: dc-core-${{ env.DC_CORE_TAG }}-debian${{ matrix.debian }}
 
       - name: Build libdeltachat (cdylib)
         if: steps.cache-dc.outputs.cache-hit != 'true'
         run: |
-          # Pin to a tagged release of chatmail/core. Bump deliberately; the
-          # FFI is mostly stable across minor versions but check release notes.
-          git clone --depth=1 --branch v2.49.0 https://github.com/chatmail/core.git deltachat-core-rust
+          git clone --depth=1 --branch "$DC_CORE_TAG" https://github.com/chatmail/core.git deltachat-core-rust
           (cd deltachat-core-rust && cargo build --release -p deltachat_ffi)
           mkdir -p dc-cache
           cp deltachat-core-rust/target/release/libdeltachat.so dc-cache/
