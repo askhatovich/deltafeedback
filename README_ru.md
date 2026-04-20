@@ -51,13 +51,24 @@ cp config.example.ini config.ini
 ./build/deltafeedback --run config.ini
 ```
 
-`--register` создаёт новую chatmail-учётку и пишет креды в `config.ini`.
+`--register` создаёт новую chatmail-учётку и пишет креды либо в тот же
+конфиг (dev), либо в account-файл, на который указывает ключ
+`account_path=` (продакшн — см. раздел про .deb).
 `--run` стартует DC event loop и HTTP-сервер (по умолчанию
 `0.0.0.0:8080`). На первом запуске бот печатает Delta Chat invite URL —
 откройте его в своём DC клиенте, чтобы добавить бота; ваш аккаунт станет
 админом.
 
 Если `config` опущен — используется `./config.ini`.
+
+## Показать invite URL
+
+```bash
+./build/deltafeedback --invite config.ini
+```
+
+Печатает текущий Delta Chat invite URL в stdout. Удобно под systemd, где
+stdout сервиса уходит в journald, или после `--reset-admin`.
 
 ## Сброс админа
 
@@ -96,14 +107,21 @@ cmake -S . -B build && cmake --build build -j
 | `/usr/share/deltafeedback/web/`         | фронтэнд — **перезатирается** на обновлении |
 | `/etc/deltafeedback/config.example.ini` | reference-конфиг — перезатирается         |
 | `/etc/deltafeedback/config.ini`         | рабочий конфиг — **никогда** не перезатирается |
-| `/lib/systemd/system/deltafeedback.service` | systemd unit                          |
+| `/var/lib/deltafeedback/account.ini`    | креды + `hmac_secret` (writable for service user) |
 | `/var/lib/deltafeedback/`               | SQLite + DC БД (создаются при установке)  |
+| `/lib/systemd/system/deltafeedback.service` | systemd unit                          |
+
+`/etc/deltafeedback/config.ini` остаётся root-owned read-only. Мутабельные
+рантайм-значения (`addr`, `mail_pw`, `hmac_secret`) живут в
+`/var/lib/deltafeedback/account.ini`, который postinst создаёт от имени
+юзера `deltafeedback`. Связь — ключ `account_path=` в основном конфиге.
 
 После установки:
 
 ```bash
 sudo -u deltafeedback deltafeedback --register <chatmail-domain> /etc/deltafeedback/config.ini
 sudo systemctl enable --now deltafeedback.service
+sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini   # показать invite URL
 ```
 
 ## Кастомизация приветственного блока

@@ -50,12 +50,23 @@ cp config.example.ini config.ini
 ./build/deltafeedback --run config.ini
 ```
 
-`--register` creates a new chatmail account and writes credentials into
-`config.ini`. `--run` starts the DC event loop and the HTTP server (default
+`--register` creates a new chatmail account and writes credentials either
+into the same config file (dev) or into the account file referenced by the
+`account_path=` key (production — see the Debian package section).
+`--run` starts the DC event loop and the HTTP server (default
 `0.0.0.0:8080`). On the first run the bot prints a Delta Chat invite URL —
 open it in your DC client to add the bot; your account becomes admin.
 
 If `config` is omitted, `./config.ini` is used.
+
+## Show invite URL
+
+```bash
+./build/deltafeedback --invite config.ini
+```
+
+Prints the current Delta Chat invite URL to stdout. Useful under systemd
+where the service's stdout goes to journald, or after `--reset-admin`.
 
 ## Reset admin
 
@@ -95,14 +106,22 @@ The package installs:
 | `/usr/share/deltafeedback/web/`         | frontend assets — **overwritten** on upgrade |
 | `/etc/deltafeedback/config.example.ini` | reference config — overwritten on upgrade |
 | `/etc/deltafeedback/config.ini`         | active config — **never** overwritten     |
-| `/lib/systemd/system/deltafeedback.service` | systemd unit                          |
+| `/var/lib/deltafeedback/account.ini`    | mutable creds + `hmac_secret` (writable by service user) |
 | `/var/lib/deltafeedback/`               | SQLite + DC database (created on install) |
+| `/lib/systemd/system/deltafeedback.service` | systemd unit                          |
+
+`/etc/deltafeedback/config.ini` stays root-owned and read-only. Mutable
+runtime state (`addr`, `mail_pw`, `hmac_secret`) goes into
+`/var/lib/deltafeedback/account.ini`, which the postinst creates owned by
+the `deltafeedback` user. The link between them is the `account_path=` key
+in the main config.
 
 Post-install:
 
 ```bash
 sudo -u deltafeedback deltafeedback --register <chatmail-domain> /etc/deltafeedback/config.ini
 sudo systemctl enable --now deltafeedback.service
+sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini   # show invite URL
 ```
 
 ## Customise the welcome block
