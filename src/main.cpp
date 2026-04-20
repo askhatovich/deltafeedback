@@ -32,13 +32,18 @@ void usage(const char* prog) {
     std::printf(
         "Usage:\n"
         "  %s --register <chatmail-domain> [config]\n"
-        "      Register on a chatmail server, write addr/mail_pw into config.\n"
+        "      Register on a chatmail server. Credentials are written to the\n"
+        "      account file (config's account_path key) — falls back to the\n"
+        "      main config file when account_path is unset.\n"
         "  %s --run [config]\n"
         "      Start the web server and DC bot. Default config: ./config.ini\n"
+        "  %s --invite [config]\n"
+        "      Print the Delta Chat invite URL/QR on stdout. Useful after\n"
+        "      `--reset-admin` or under systemd where stdout goes to journald.\n"
         "  %s --reset-admin [config]\n"
         "      Forget current owner; on next --run a fresh invite is printed.\n"
         "      Drops all tickets and pending POW state addressed to the former owner.\n",
-        prog, prog, prog);
+        prog, prog, prog, prog);
 }
 
 const char* arg_or(int argc, char** argv, int i, const char* fallback) {
@@ -64,13 +69,47 @@ std::string random_hex(std::size_t bytes) {
     return out;
 }
 
-std::string ensure_hmac_secret(app::Config& cfg, const std::string& cfg_path) {
+// Path where mutable runtime values (addr, mail_pw, hmac_secret, …) are
+// written. If config.ini sets account_path → that file. Otherwise → the main
+// config itself (single-file dev layout).
+std::string writable_path(const app::Config& cfg, const std::string& main_path) {
+    auto a = cfg.get("account_path");
+    return a.empty() ? main_path : a;
+}
+
+// Loads the main config, then overlays values from account_path (if set).
+// Lets /etc/deltafeedback/config.ini be root-owned read-only while the
+// service writes runtime credentials into /var/lib/deltafeedback/account.ini.
+app::Config load_with_account(const std::string& main_path) {
+    auto cfg = app::Config::load(main_path);
+    auto acc = cfg.get("account_path");
+    if (!acc.empty()) {
+        auto overlay = app::Config::load(acc);
+        for (const auto& [k, v] : overlay.raw()) cfg.set(k, v);
+    }
+    return cfg;
+}
+
+// Saves only the supplied keys to the writable file. Preserves anything
+// else that's already there.
+bool save_account(const std::string& path, std::initializer_list<std::pair<std::string, std::string>> kv) {
+    auto existing = app::Config::load(path);
+    for (auto& [k, v] : kv) existing.set(k, v);
+    return existing.save(path);
+}
+
+std::string ensure_hmac_secret(app::Config& cfg, const std::string& writable) {
     auto s = cfg.get("hmac_secret");
     if (!s.empty()) return s;
     s = random_hex(32);
     cfg.set("hmac_secret", s);
-    cfg.save(cfg_path);
-    std::printf("[setup] generated hmac_secret and saved to %s\n", cfg_path.c_str());
+    if (!save_account(writable, {{"hmac_secret", s}})) {
+        std::fprintf(stderr, "[setup] WARNING: could not write hmac_secret to %s — "
+                             "POW tokens will be invalidated on every restart.\n",
+                     writable.c_str());
+    } else {
+        std::printf("[setup] generated hmac_secret and saved to %s\n", writable.c_str());
+    }
     return s;
 }
 
@@ -107,8 +146,9 @@ bool wait_configure(dc_event_emitter_t* em) {
 }
 
 int cmd_register(const std::string& domain, const std::string& cfg_path) {
-    app::Config cfg = app::Config::load(cfg_path);
-    std::string db_path = cfg.get("db", "./deltafeedback.db");
+    app::Config cfg = load_with_account(cfg_path);
+    std::string writable = writable_path(cfg, cfg_path);
+    std::string db_path  = cfg.get("db", "./deltafeedback.db");
 
     // Use a SEPARATE DC database next to ours (state lives in our SQLite).
     std::string dc_db = db_path + ".dc";
@@ -152,19 +192,50 @@ int cmd_register(const std::string& domain, const std::string& cfg_path) {
         return 1;
     }
 
-    cfg.set("addr", addr_s);
-    cfg.set("mail_pw", pw_s);
-    cfg.set("db", db_path);
-    cfg.save(cfg_path);
+    if (!save_account(writable, {
+            {"addr",    addr_s},
+            {"mail_pw", pw_s},
+            {"db",      db_path},
+        })) {
+        std::fprintf(stderr, "Could not write account file %s — check permissions.\n",
+                     writable.c_str());
+        return 1;
+    }
 
-    std::printf("Registered: %s\nConfig: %s\nDC db:  %s\n",
-                addr_s.c_str(), cfg_path.c_str(), dc_db.c_str());
-    std::printf("Run:   ./deltafeedback --run %s\n", cfg_path.c_str());
+    std::printf("Registered: %s\nAccount file: %s\nDC db:        %s\n",
+                addr_s.c_str(), writable.c_str(), dc_db.c_str());
+    std::printf("Run:   deltafeedback --run %s\n", cfg_path.c_str());
+    return 0;
+}
+
+int cmd_invite(const std::string& cfg_path) {
+    auto cfg = load_with_account(cfg_path);
+    auto db_path = cfg.get("db", "./deltafeedback.db");
+    auto dc_db   = db_path + ".dc";
+
+    dc_context_t* ctx = dc_context_new(nullptr, dc_db.c_str(), nullptr);
+    if (!ctx) { std::fprintf(stderr, "dc_context_new failed (%s)\n", dc_db.c_str()); return 1; }
+
+    if (!dc_is_configured(ctx)) {
+        std::fprintf(stderr, "DC not configured — run --register first.\n");
+        dc_context_unref(ctx);
+        return 1;
+    }
+
+    char* qr = dc_get_securejoin_qr(ctx, 0);
+    if (!qr) {
+        std::fprintf(stderr, "Could not generate invite QR.\n");
+        dc_context_unref(ctx);
+        return 1;
+    }
+    std::printf("%s\n", qr);
+    dc_str_unref(qr);
+    dc_context_unref(ctx);
     return 0;
 }
 
 int cmd_reset_admin(const std::string& cfg_path) {
-    auto cfg = app::Config::load(cfg_path);
+    auto cfg = load_with_account(cfg_path);
     auto db_path = cfg.get("db", "./deltafeedback.db");
     auto db = db::Database::open(db_path);
     db::StateRepo state(db->handle());
@@ -174,7 +245,7 @@ int cmd_reset_admin(const std::string& cfg_path) {
 }
 
 int cmd_run(const std::string& cfg_path) {
-    auto cfg = app::Config::load(cfg_path);
+    auto cfg = load_with_account(cfg_path);
     if (!cfg.has("addr") || !cfg.has("mail_pw")) {
         std::fprintf(stderr, "Config missing addr/mail_pw — run --register first.\n");
         return 1;
@@ -184,8 +255,9 @@ int cmd_run(const std::string& cfg_path) {
     auto bind     = cfg.get("bind", "0.0.0.0");
     auto port     = static_cast<std::uint16_t>(cfg.get_int("port", 8080));
     auto web_root = cfg.get("web_root", "./web");
+    auto writable = writable_path(cfg, cfg_path);
 
-    auto secret_hex = ensure_hmac_secret(cfg, cfg_path);
+    auto secret_hex = ensure_hmac_secret(cfg, writable);
     auto secret     = hex_decode(secret_hex);
 
     auto db = db::Database::open(db_path);
@@ -263,6 +335,7 @@ int main(int argc, char** argv) {
         return cmd_register(argv[2], arg_or(argc, argv, 3, "./config.ini"));
     }
     if (cmd == "--run")          return cmd_run(arg_or(argc, argv, 2, "./config.ini"));
+    if (cmd == "--invite")       return cmd_invite(arg_or(argc, argv, 2, "./config.ini"));
     if (cmd == "--reset-admin")  return cmd_reset_admin(arg_or(argc, argv, 2, "./config.ini"));
 
     usage(argv[0]);

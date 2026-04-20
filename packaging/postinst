@@ -20,16 +20,27 @@ install -d -o $PKG -g $PKG -m 0750 $RUN
 # Initialise config.ini from the example ONLY if it does not yet exist —
 # upgrades MUST NOT overwrite a user's edited config.
 if [ ! -e $ETC/config.ini ]; then
-    install -m 0640 -o root -g $PKG $ETC/config.example.ini $ETC/config.ini
-    # Make sure the bundled defaults point inside our state dir.
+    install -m 0644 -o root -g root $ETC/config.example.ini $ETC/config.ini
+    # Make the bundled defaults point at the package layout, and split mutable
+    # state (addr/mail_pw/hmac_secret) into a writable account file owned by
+    # the service user — /etc/ stays root-owned read-only.
     sed -i \
         -e "s|^db=.*|db=$RUN/deltafeedback.db|" \
         -e "s|^web_root=.*|web_root=/usr/share/$PKG/web|" \
         $ETC/config.ini
-    echo "$PKG: created $ETC/config.ini from example. Run:"
+    if ! grep -q '^account_path=' $ETC/config.ini; then
+        echo "account_path=$RUN/account.ini" >> $ETC/config.ini
+    fi
+    echo "$PKG: created $ETC/config.ini. Next steps:"
     echo "    sudo -u $PKG $PKG --register <chatmail-domain> $ETC/config.ini"
-    echo "  then enable the service:"
     echo "    sudo systemctl enable --now $PKG.service"
+    echo "    sudo -u $PKG $PKG --invite $ETC/config.ini    # show invite URL"
+fi
+
+# Account file: the service writes addr/mail_pw/hmac_secret here at registration
+# and on first run. Must be writable by the deltafeedback user.
+if [ ! -e $RUN/account.ini ]; then
+    install -m 0600 -o $PKG -g $PKG /dev/null $RUN/account.ini
 fi
 
 # Always ensure the example file is readable for diff'ing on upgrade.
