@@ -43,6 +43,7 @@ install -d "$STAGE/usr/bin"
 install -d "$STAGE/usr/lib/$PKGNAME"
 install -d "$STAGE/usr/share/$PKGNAME/web"
 install -d "$STAGE/usr/share/$PKGNAME/web/locales"
+install -d "$STAGE/usr/share/$PKGNAME/welcome.defaults"
 install -d "$STAGE/etc/$PKGNAME"
 install -d "$STAGE/lib/systemd/system"
 
@@ -53,6 +54,13 @@ patchelf --set-rpath '$ORIGIN/../lib/'"$PKGNAME" "$STAGE/usr/bin/$PKGNAME" 2>/de
 
 # Web assets — replaced on every upgrade (NOT conffiles).
 cp -r web/. "$STAGE/usr/share/$PKGNAME/web/"
+
+# Welcome HTML is admin-editable — must NOT be overwritten by upgrades.
+# Stash the bundled defaults outside /web/ so dpkg doesn't manage them in
+# the served path, then move them out of /web/ entirely; postinst will
+# seed /web/ from the stash only if no welcome file is present there.
+mv "$STAGE/usr/share/$PKGNAME/web/welcome.ru.html" "$STAGE/usr/share/$PKGNAME/welcome.defaults/" 2>/dev/null || true
+mv "$STAGE/usr/share/$PKGNAME/web/welcome.en.html" "$STAGE/usr/share/$PKGNAME/welcome.defaults/" 2>/dev/null || true
 
 # Config example — postinst copies to config.ini ONLY if it doesn't exist.
 install -m 0644 config.example.ini "$STAGE/etc/$PKGNAME/config.example.ini"

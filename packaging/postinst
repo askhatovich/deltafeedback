@@ -43,6 +43,18 @@ if [ ! -e $RUN/account.ini ]; then
     install -m 0600 -o $PKG -g $PKG /dev/null $RUN/account.ini
 fi
 
+# Seed welcome HTML in the served web dir from the bundled defaults — only
+# if it isn't there already. The package never ships welcome.* INSIDE
+# /usr/share/$PKG/web/, so dpkg can't clobber an admin-edited file on
+# upgrade. (build-deb.sh moves them into /usr/share/$PKG/welcome.defaults/.)
+WEB=/usr/share/$PKG/web
+DEFAULTS=/usr/share/$PKG/welcome.defaults
+for L in ru en; do
+    if [ ! -e $WEB/welcome.$L.html ] && [ -e $DEFAULTS/welcome.$L.html ]; then
+        install -m 0644 $DEFAULTS/welcome.$L.html $WEB/welcome.$L.html
+    fi
+done
+
 # Always ensure the example file is readable for diff'ing on upgrade.
 chmod 0644 $ETC/config.example.ini || true
 
