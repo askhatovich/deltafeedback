@@ -103,7 +103,8 @@ The package installs:
 |-----------------------------------------|-------------------------------------------|
 | `/usr/bin/deltafeedback`                | binary                                    |
 | `/usr/lib/deltafeedback/libdeltachat.so`| bundled DC core (rpath wired)             |
-| `/usr/share/deltafeedback/web/`         | frontend assets — **overwritten** on upgrade |
+| `/usr/share/deltafeedback/web/`         | frontend assets — **overwritten** on upgrade EXCEPT `welcome.{ru,en}.html` |
+| `/usr/share/deltafeedback/welcome.defaults/` | seed copies for the welcome block; postinst installs them into `web/` only when missing |
 | `/etc/deltafeedback/config.example.ini` | reference config — overwritten on upgrade |
 | `/etc/deltafeedback/config.ini`         | active config — **never** overwritten     |
 | `/var/lib/deltafeedback/account.ini`    | mutable creds + `hmac_secret` (writable by service user) |
@@ -126,5 +127,12 @@ sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini   # s
 
 ## Customise the welcome block
 
-Edit `web/welcome.ru.html` and `web/welcome.en.html`. Plain HTML; an empty
-file hides the block. Re-fetched whenever the visitor switches language.
+Plain HTML; an empty file hides the block. Re-fetched on language switch.
+
+- **Dev**: edit `web/welcome.ru.html` and `web/welcome.en.html` in the
+  source tree.
+- **Debian package**: edit
+  `/usr/share/deltafeedback/web/welcome.{ru,en}.html`. These files are
+  NOT in the package data archive at the served path — they're seeded by
+  postinst from `welcome.defaults/` on first install, so subsequent
+  `apt upgrade` runs leave your customisations alone.
