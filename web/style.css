@@ -58,17 +58,24 @@ body {
 }
 
 main {
-    /* Pin main to one viewport — footer sits just below the fold, requires
-       a small page scroll. The chat inside still scrolls inside its own
-       container thanks to the min-height:0 flex chain. */
-    height: 100vh;
-    height: 100dvh;
+    /* Form view: at LEAST one viewport tall so the footer initially sits
+       below the fold, but content (welcome + form) is allowed to push the
+       page taller on small screens — otherwise it overlaps the footer. */
+    min-height: 100vh;
+    min-height: 100dvh;
     width: 100%;
     max-width: 640px;
     margin: 0 auto;
     padding: 2rem 1.25rem;
     display: flex;
     flex-direction: column;
+}
+
+/* Ticket view: pin main to exactly one viewport so the chat scrolls
+   inside its .messages container instead of growing the whole page. */
+body.ticket-view main {
+    height: 100vh;
+    height: 100dvh;
     min-height: 0;
 }
 

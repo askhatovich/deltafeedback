@@ -52,6 +52,7 @@
     });
 
     function showForm() {
+        document.body.classList.remove('ticket-view');
         form.hidden = false;
         form.dataset.startedAt = String(Date.now());
         statusP.textContent = '';
@@ -131,6 +132,7 @@
         lastStatus   = '';  // and the very first poll won't short-circuit
         welcome.hidden = true;  // welcome belongs to the form view only
         ticket.hidden = false;
+        document.body.classList.add('ticket-view');
         ticket.querySelector('.ticket-id').textContent = t.id;
         startPoll(t);
     }
