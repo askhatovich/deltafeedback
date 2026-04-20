@@ -127,7 +127,8 @@ const char* mime_for(const std::string& path) {
     return "application/octet-stream";
 }
 
-crow::response file_response(const std::filesystem::path& root, const std::string& rel) {
+crow::response file_response(const std::filesystem::path& root, const std::string& rel,
+                             const crow::request& req) {
     // Block traversal: lexically_normal + ensure result starts with root.
     auto full = std::filesystem::weakly_canonical(root / rel);
     auto rootc = std::filesystem::weakly_canonical(root);
@@ -136,12 +137,35 @@ crow::response file_response(const std::filesystem::path& root, const std::strin
     if (full_str.size() < root_str.size() || full_str.compare(0, root_str.size(), root_str) != 0) {
         return crow::response(404);
     }
+
+    std::error_code ec;
+    auto fsize = std::filesystem::file_size(full, ec);
+    auto ftime = std::filesystem::last_write_time(full, ec);
+    if (ec) return crow::response(404);
+
+    // ETag = "<mtime_ticks>-<size>". Strong enough for our case (admin
+    // edits files in place; mtime advances on any change). Stable across
+    // server restarts so clients keep their cache.
+    std::string etag = "\"" + std::to_string(ftime.time_since_epoch().count())
+                     + "-" + std::to_string(fsize) + "\"";
+
+    auto inm = req.get_header_value("If-None-Match");
+    if (!inm.empty() && inm == etag) {
+        crow::response r304(304);
+        r304.add_header("ETag", etag);
+        r304.add_header("Cache-Control", "no-cache");
+        return r304;
+    }
+
     std::ifstream f(full, std::ios::binary);
     if (!f) return crow::response(404);
     std::ostringstream ss; ss << f.rdbuf();
     crow::response r(ss.str());
     r.add_header("Content-Type", mime_for(full_str));
+    // no-cache here means "must revalidate" (NOT "don't cache") — clients
+    // keep the asset, send If-None-Match next time, get 304 in ~70 bytes.
     r.add_header("Cache-Control", "no-cache");
+    r.add_header("ETag", etag);
     return r;
 }
 
@@ -199,23 +223,23 @@ int Server::run() {
     std::filesystem::path web_root = self.settings.web_root;
 
     // --- Static / index ---
-    CROW_ROUTE(app, "/")([web_root](const crow::request&) {
-        return file_response(web_root, "index.html");
+    CROW_ROUTE(app, "/")([web_root](const crow::request& req) {
+        return file_response(web_root, "index.html", req);
     });
-    CROW_ROUTE(app, "/t/<string>")([web_root](const crow::request&, const std::string&) {
-        return file_response(web_root, "index.html");
+    CROW_ROUTE(app, "/t/<string>")([web_root](const crow::request& req, const std::string&) {
+        return file_response(web_root, "index.html", req);
     });
-    CROW_ROUTE(app, "/static/<string>")([web_root](const crow::request&, const std::string& p) {
-        return file_response(web_root, p);
+    CROW_ROUTE(app, "/static/<string>")([web_root](const crow::request& req, const std::string& p) {
+        return file_response(web_root, p, req);
     });
     // Bare /favicon.ico — some clients (RSS readers, link-preview bots) hit
     // the root path directly instead of reading the <link rel="icon"> tag.
-    CROW_ROUTE(app, "/favicon.ico")([web_root](const crow::request&) {
-        return file_response(web_root, "favicon.ico");
+    CROW_ROUTE(app, "/favicon.ico")([web_root](const crow::request& req) {
+        return file_response(web_root, "favicon.ico", req);
     });
     CROW_ROUTE(app, "/static/locales/<string>")
-    ([web_root](const crow::request&, const std::string& p) {
-        return file_response(web_root, std::string("locales/") + p);
+    ([web_root](const crow::request& req, const std::string& p) {
+        return file_response(web_root, std::string("locales/") + p, req);
     });
 
     // --- Site config (read once by the frontend at load) ---
