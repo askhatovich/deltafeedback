@@ -13,7 +13,18 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-0.1.0+$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+# Version comes from `git describe --tags`:
+#   - on a tagged commit:        `v1.0.0`        → `1.0.0`
+#   - on a commit past a tag:    `v1.0.0-3-g..`  → `1.0.0-3-g..`
+#   - no tags / no git available: `0+<sha>`      → `0+<sha>`
+# Override via $VERSION for one-off builds.
+if [ -z "${VERSION:-}" ]; then
+    if VERSION=$(git describe --tags --always --dirty 2>/dev/null); then
+        VERSION="${VERSION#v}"
+    else
+        VERSION="0+$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    fi
+fi
 ARCH="${ARCH:-$(dpkg --print-architecture)}"
 DEBIAN_CODENAME="${DEBIAN_CODENAME:-$(. /etc/os-release && echo "${VERSION_CODENAME:-unknown}")}"
 BIN="${BIN:-./build/deltafeedback}"

@@ -48,6 +48,12 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v4
+        with:
+          # Tags are needed so packaging/build-deb.sh can read `git describe`.
+          fetch-depth: 0
+
+      - name: Mark workspace safe for git (container UID mismatch)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Cache libdeltachat artifact
         id: cache-dc
