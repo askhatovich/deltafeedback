@@ -31,6 +31,6 @@
     "missing_auth": "Authentication required.",
     "bad_json": "Bad request.",
     "network": "Network error.",
-    "computing": "Computing proof of work…"
+    "computing": "Anti-spam check…"
   }
 }
