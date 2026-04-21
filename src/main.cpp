@@ -315,8 +315,6 @@ int cmd_run(const std::string& cfg_path) {
     // Server in main thread (blocks).
     server::Settings s;
     s.bind = bind; s.port = port; s.web_root = web_root;
-    s.title_ru = cfg.get("title_ru");
-    s.title_en = cfg.get("title_en");
     server::Server srv(s, pow_issuer, validator, sender, tickets, messages, replay);
     std::printf("Server listening on %s:%u (web_root=%s)\n", bind.c_str(), port, web_root.c_str());
     return srv.run();

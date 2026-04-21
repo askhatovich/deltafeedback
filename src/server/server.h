@@ -15,10 +15,6 @@ struct Settings {
     std::string  bind = "0.0.0.0";
     std::uint16_t port = 8080;
     std::string  web_root = "./web";
-    // Optional per-locale page titles. Empty value → frontend falls back to
-    // the locale file's "title" key.
-    std::string  title_ru;
-    std::string  title_en;
 };
 
 // Wires Crow up. Routes (planned):

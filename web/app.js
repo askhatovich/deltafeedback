@@ -44,12 +44,16 @@
 
     form.addEventListener('submit', onSubmit);
 
-    // Re-render dynamic strings (status badge) when the user switches language.
-    // Also reload the welcome HTML in the new language if the form is visible.
-    window.addEventListener('langchange', () => {
+    // Re-render dynamic strings (status badge, etc.) whenever the i18n
+    // dict becomes available — both on the initial async load (`langready`,
+    // wins the race against the first poll) and on a manual switch
+    // (`langchange`).
+    function refreshI18n() {
         if (currentTicket) renderTicket(currentTicket, stored);
-        if (!form.hidden) loadWelcome();
-    });
+        if (!form.hidden)  loadWelcome();
+    }
+    window.addEventListener('langready',  refreshI18n);
+    window.addEventListener('langchange', refreshI18n);
 
     function showForm() {
         document.body.classList.remove('ticket-view');

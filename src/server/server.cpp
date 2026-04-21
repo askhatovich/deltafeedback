@@ -242,16 +242,6 @@ int Server::run() {
         return file_response(web_root, std::string("locales/") + p, req);
     });
 
-    // --- Site config (read once by the frontend at load) ---
-    CROW_ROUTE(app, "/api/site")([&self](const crow::request&) {
-        crow::json::wvalue out;
-        out["titles"]["ru"] = self.settings.title_ru;
-        out["titles"]["en"] = self.settings.title_en;
-        crow::response r{out};
-        r.add_header("Content-Type", "application/json");
-        return r;
-    });
-
     // --- POW captcha ---
     CROW_ROUTE(app, "/api/captcha")
     ([&self](const crow::request& req) {

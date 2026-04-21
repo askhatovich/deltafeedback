@@ -5,13 +5,13 @@
 //   2. navigator.language  — browser preference
 //   3. 'en' fallback
 //
-// On top of the static locale files, the server can ship per-locale overrides
-// for site-level fields (currently `title`) via /api/site. We fetch that once
-// and merge it into the active dict on every (re)apply, so admin's config
-// values take precedence over the locale defaults.
+// All translatable text comes from /static/locales/<lang>.json. Page title,
+// labels, headers — anything that should change with language — uses a
+// `data-i18n="..."` attribute and is rewritten when the dict loads.
+// Operator customises wording by editing the locale files / index.html
+// directly (no server-side config layer).
 //
-// Exposes window.I18N = { lang, t(key), setLang(lang) }. setLang() persists
-// the choice and re-applies translations live (no reload).
+// Exposes window.I18N = { lang, t(key), setLang(lang) }.
 
 (function () {
     const STORAGE_KEY = 'lang';
@@ -24,9 +24,8 @@
         return nav.startsWith('ru') ? 'ru' : 'en';
     }
 
-    let dict    = {};
-    let siteCfg = {};
-    let lang    = detect();
+    let dict = {};
+    let lang = detect();
 
     async function load(l) {
         try {
@@ -34,21 +33,6 @@
             if (r.ok) return await r.json();
         } catch (_) {}
         return {};
-    }
-
-    async function loadSite() {
-        try {
-            const r = await fetch('/api/site', { cache: 'no-store' });
-            if (r.ok) return await r.json();
-        } catch (_) {}
-        return {};
-    }
-
-    // Overlay site-config fields onto the locale dict for the current lang.
-    // An empty server value falls through to the locale file default.
-    function mergeSite() {
-        const t = siteCfg.titles && siteCfg.titles[lang];
-        if (t) dict.title = t;
     }
 
     function t(key) {
@@ -71,7 +55,6 @@
         lang = next;
         localStorage.setItem(STORAGE_KEY, lang);
         dict = await load(lang);
-        mergeSite();
         apply();
         window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
     }
@@ -82,10 +65,7 @@
     });
 
     (async () => {
-        const [d, s] = await Promise.all([load(lang), loadSite()]);
-        dict    = d;
-        siteCfg = s;
-        mergeSite();
+        dict = await load(lang);
         apply();
         window.dispatchEvent(new CustomEvent('langready', { detail: { lang } }));
     })();
