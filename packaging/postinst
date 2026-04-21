@@ -43,12 +43,22 @@ if [ ! -e $RUN/account.ini ]; then
     install -m 0600 -o $PKG -g $PKG /dev/null $RUN/account.ini
 fi
 
+WEB=/usr/share/$PKG/web
+DEFAULTS=/usr/share/$PKG/welcome.defaults
+
+# Restore a backup made by preinst when upgrading FROM a version that
+# shipped welcome.* in the package data (and which dpkg therefore wiped
+# during post-unpack cleanup). Idempotent: no-op if no backup exists.
+for L in ru en; do
+    if [ -e "$WEB/welcome.$L.html.upgrade-saved" ]; then
+        mv -f "$WEB/welcome.$L.html.upgrade-saved" "$WEB/welcome.$L.html"
+    fi
+done
+
 # Seed welcome HTML in the served web dir from the bundled defaults — only
 # if it isn't there already. The package never ships welcome.* INSIDE
 # /usr/share/$PKG/web/, so dpkg can't clobber an admin-edited file on
 # upgrade. (build-deb.sh moves them into /usr/share/$PKG/welcome.defaults/.)
-WEB=/usr/share/$PKG/web
-DEFAULTS=/usr/share/$PKG/welcome.defaults
 for L in ru en; do
     if [ ! -e $WEB/welcome.$L.html ] && [ -e $DEFAULTS/welcome.$L.html ]; then
         install -m 0644 $DEFAULTS/welcome.$L.html $WEB/welcome.$L.html

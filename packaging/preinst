@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+PKG=deltafeedback
+WEB=/usr/share/$PKG/web
+
+# When upgrading FROM a version that shipped welcome.{ru,en}.html as
+# package data (1.0.x), dpkg's post-unpack cleanup removes the served
+# welcome files because the new package no longer ships them at that
+# path. Stash a copy here, before that cleanup runs, so postinst can
+# restore an admin-edited file.
+case "$1" in
+    upgrade)
+        for L in ru en; do
+            if [ -e "$WEB/welcome.$L.html" ]; then
+                cp -p "$WEB/welcome.$L.html" "$WEB/welcome.$L.html.upgrade-saved"
+            fi
+        done
+        ;;
+esac
+
+#DEBHELPER#
+exit 0

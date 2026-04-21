@@ -66,6 +66,7 @@ mv "$STAGE/usr/share/$PKGNAME/web/welcome.en.html" "$STAGE/usr/share/$PKGNAME/we
 install -m 0644 config.example.ini "$STAGE/etc/$PKGNAME/config.example.ini"
 
 install -m 0644 packaging/deltafeedback.service "$STAGE/lib/systemd/system/$PKGNAME.service"
+install -m 0755 packaging/preinst               "$STAGE/DEBIAN/preinst"
 install -m 0755 packaging/postinst              "$STAGE/DEBIAN/postinst"
 install -m 0755 packaging/prerm                 "$STAGE/DEBIAN/prerm"
 install -m 0755 packaging/postrm                "$STAGE/DEBIAN/postrm"
