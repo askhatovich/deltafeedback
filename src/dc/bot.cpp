@@ -147,6 +147,9 @@ bool Bot::configure_if_needed(const std::string& addr, const std::string& mail_p
     dc_set_config(ctx, "mail_pw", mail_pw.c_str());
     dc_set_config(ctx, "bot", "1");
     dc_set_config(ctx, "e2ee_enabled", "1");
+    // Read receipts: explicit so we don't rely on upstream defaults.
+    // Lets the admin's client display "read" on messages we've processed.
+    dc_set_config(ctx, "mdns_enabled", "1");
     dc_configure(ctx);
 
     // Wait for completion via a temporary emitter so the main loop's emitter
@@ -248,12 +251,17 @@ int Bot::run_event_loop() {
                         "Чтобы ответить — нажмите «ответить» или начните сообщение с [ID]. "
                         "Команда закрытия: [ID] /close");
                     std::printf("[BOT] Owner set: %u\n", from);
+                    // Confirm processing: marks seen + emits MDN so admin's
+                    // DC client shows "read" on their original message.
+                    dc_markseen_msgs(ctx, &msg_id, 1);
                 } else if (from == current_owner) {
                     route_admin_msg(ctx, current_owner, msg_id, text, quoted_msg_id, quoted_text,
                                     impl_->tickets, impl_->messages);
+                    dc_markseen_msgs(ctx, &msg_id, 1);
                 } else {
                     // Stranger: block + delete chat. We never reply (don't
-                    // confirm bot existence to randoms).
+                    // confirm bot existence to randoms) — and intentionally
+                    // do NOT send a read receipt either.
                     dc_block_contact(ctx, from, 1);
                     dc_delete_chat(ctx, chat_id);
                     std::printf("[BOT] Blocked stranger contact %u\n", from);
