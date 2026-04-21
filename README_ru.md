@@ -117,12 +117,23 @@ cmake -S . -B build && cmake --build build -j
 `/var/lib/deltafeedback/account.ini`, который postinst создаёт от имени
 юзера `deltafeedback`. Связь — ключ `account_path=` в основном конфиге.
 
-После установки:
+После установки (по порядку):
 
 ```bash
+# 1. Завести chatmail-аккаунт боту — креды запишутся в account.ini.
 sudo -u deltafeedback deltafeedback --register <chatmail-domain> /etc/deltafeedback/config.ini
-sudo systemctl enable --now deltafeedback.service
-sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini   # показать invite URL
+
+# 2. Запустить сервис и поставить на автозапуск при старте системы.
+sudo systemctl start  deltafeedback.service
+sudo systemctl enable deltafeedback.service
+
+# 3. Вывести invite-ссылку — откройте её в Delta Chat, чтобы добавить бота.
+#    Первый, кто ему напишет, станет админом.
+sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini
+
+# Полезные проверки:
+sudo systemctl status   deltafeedback.service
+sudo journalctl -u deltafeedback -f
 ```
 
 ## Кастомизация приветственного блока

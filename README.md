@@ -117,12 +117,23 @@ runtime state (`addr`, `mail_pw`, `hmac_secret`) goes into
 the `deltafeedback` user. The link between them is the `account_path=` key
 in the main config.
 
-Post-install:
+Post-install steps (run in order):
 
 ```bash
+# 1. Provision the bot's chatmail account — credentials go into account.ini.
 sudo -u deltafeedback deltafeedback --register <chatmail-domain> /etc/deltafeedback/config.ini
-sudo systemctl enable --now deltafeedback.service
-sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini   # show invite URL
+
+# 2. Start the service and have systemd bring it up on every boot.
+sudo systemctl start  deltafeedback.service
+sudo systemctl enable deltafeedback.service
+
+# 3. Print the Delta Chat invite URL — open it in your DC client to add the
+#    bot. The first contact who messages it becomes the admin.
+sudo -u deltafeedback deltafeedback --invite /etc/deltafeedback/config.ini
+
+# Useful checks:
+sudo systemctl status   deltafeedback.service
+sudo journalctl -u deltafeedback -f
 ```
 
 ## Customise the welcome block
