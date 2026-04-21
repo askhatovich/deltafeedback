@@ -2,6 +2,8 @@
 
 # DeltaFeedback
 
+![DeltaFeedback](picture.png)
+
 Self-hosted contact form for a personal site. Visitors submit messages via
 a tiny HTML form; messages reach you over Delta Chat, where you reply
 through the standard DC "reply" feature. Replies appear on the visitor's
